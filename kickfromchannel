@@ -1,0 +1,20 @@
+import discord
+
+client = discord.Client()
+
+# Set the name of the channel to kick users from
+channel_name = "general"
+
+@client.event
+async def on_message(message):
+    # If the message is from the bot, return
+    if message.author == client.user:
+        return
+
+    # If the message is the kick command and the channel is the specified channel
+    if message.content == "!kick" and message.channel.name == channel_name:
+        # Kick all users in the channel
+        for member in message.channel.members:
+            await member.kick()
+
+client.run("TOKEN")
