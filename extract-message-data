@@ -1,0 +1,29 @@
+import discord
+import csv
+
+client = discord.Client()
+
+# Set the name of the channel to export the chat history from
+channel_name = "general"
+
+@client.event
+async def on_message(message):
+    # If the message is from the bot, return
+    if message.author == client.user:
+        return
+
+    # If the message is the export command and the channel is the specified channel
+    if message.content == "!export" and message.channel.name == channel_name:
+        # Create a list to store the chat history
+        chat_history = []
+
+        # Get the chat history of the channel
+        async for message in message.channel.history(limit=None):
+            chat_history.append([message.author.name, message.timestamp, message.content])
+
+        # Write the chat history to a .csv file
+        with open("chat_history.csv", "w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerows(chat_history)
+
+client.run("TOKEN")
