@@ -1,0 +1,84 @@
+import discord
+import os
+import requests
+import json
+import asyncio
+
+client = discord.Client()
+
+# Replace these with your own Twitch API credentials
+TWITCH_CLIENT_ID = 'your_client_id'
+TWITCH_SECRET = 'your_secret'
+TWITCH_USERNAME = 'your_username'
+TWITCH_OAUTH_TOKEN = 'your_oauth_token'
+
+# The Discord channel to feed the Twitch chat into
+DISCORD_CHAT_CHANNEL_ID = 'your_discord_channel_id'
+
+# The Twitch channel to feed the Discord chat into
+TWITCH_CHAT_CHANNEL = 'your_twitch_channel'
+
+@client.event
+async def on_ready():
+    print(f'Successfully logged in as {client.user}!')
+    # Start the Twitch chat loop
+    await check_twitch_chat()
+
+@client.event
+async def on_message(message):
+    # Check if the message was sent in the Discord chat channel
+    if message.channel.id == DISCORD_CHAT_CHANNEL_ID:
+        # Feed the message into the Twitch chat
+        await send_message_to_twitch_chat(message.content)
+
+async def send_message_to_twitch_chat(message):
+    headers = {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': f'Bearer {TWITCH_OAUTH_TOKEN}',
+        'Content-Type': 'application/json'
+    }
+    data = {
+        'channel': TWITCH_CHAT_CHANNEL,
+        'message': message
+    }
+    r = requests.post('https://api.twitch.tv/helix/chat/send_message', headers=headers, data=json.dumps(data))
+    if r.status_code != 200:
+        print(f'Error sending message to Twitch chat: {r.text}')
+
+async def check_twitch_chat():
+    headers = {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': f'Bearer {TWITCH_OAUTH_TOKEN}'
+    }
+    params = {
+        'user_login': TWITCH_USERNAME
+    }
+    r = requests.get('https://api.twitch.tv/helix/users/follows', headers=headers, params=params)
+    if r.status_code != 200:
+        print(f'Error getting followed channels: {r.text}')
+        return
+    response_json = r.json()
+    for channel in response_json['data']:
+        # Check if the channel is online
+        r = requests.get(f'https://api.twitch.tv/helix/streams?user_id={channel["to_id"]}', headers=headers)
+        if r.status_code != 200:
+            print(f'Error getting stream status: {r.text}')
+            continue
+        response_json = r.json()
+        if len(response_json['data']) == 0:
+            continue
+        # Get the chat messages for the channel
+        r = requests.get(f'https://api.twitch.tv/helix/chat/messages?channel_id={channel["to_id"]}', headers=headers)
+        if r.status_code != 200:
+            print(f'Error getting chat messages: {r.text}')
+            continue
+        response_json = r.json()
+        for message in response_json['data']:
+            # Send the message to the Discord chat channel
+            discord_channel = client.get_channel(DISCORD_CHAT_CHANNEL_ID)
+            await discord_channel.send(f'{message["user_name"]}: {message["message"]}')
+    # Check again after 30 seconds
+    await asyncio.sleep(30)
+    await check_twitch_chat()
+
+client.run(os.environ['DISCORD_TOKEN'])
