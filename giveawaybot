@@ -1,0 +1,29 @@
+import discord
+
+client = discord.Client()
+
+# Create a list of items
+items = ["item1", "item2", "item3", "item4"]
+
+@client.event
+async def on_message(message):
+    # If the message is from the bot, return
+    if message.author == client.user:
+        return
+
+    # If the message is the giveaway command
+    if message.content == "!giveaway":
+        # Check if there are any items left in the list
+        if len(items) > 0:
+            # Choose a random item from the list
+            item = random.choice(items)
+
+            # Send the item in a message
+            await message.channel.send(f"The giveaway item is: {item}")
+
+            # Remove the item from the list
+            items.remove(item)
+        else:
+            await message.channel.send("There are no items left in the giveaway list.")
+
+client.run("TOKEN")
