@@ -1,0 +1,70 @@
+import discord
+import paypalrestsdk
+
+client = discord.Client()
+
+# Set your PayPal API credentials
+paypalrestsdk.configure({
+    "mode": "sandbox", # sandbox or live
+    "client_id": "CLIENT_ID",
+    "client_secret": "CLIENT_SECRET"
+})
+
+@client.event
+async def on_message(message):
+    # If the message is from the bot, return
+    if message.author == client.user:
+        return
+
+    # If the message is a tip command
+    if message.content.startswith("!tip"):
+        # Split the message into command and argument
+        command, amount, email = message.content.split(" ")
+
+        # Convert the amount to a float
+        try:
+            amount = float(amount)
+        except ValueError:
+            await message.channel.send("Invalid amount.")
+            return
+
+        # Create a PayPal payment
+        payment = paypalrestsdk.Payment({
+            "intent": "sale",
+            "payer": {
+                "payment_method": "paypal"
+            },
+            "redirect_urls": {
+                "return_url": "http://localhost:3000/payment/execute",
+                "cancel_url": "http://localhost:3000/"
+            },
+            "transactions": [{
+                "amount": {
+                    "total": str(amount),
+                    "currency": "USD"
+                },
+                "description": "Tip from Discord"
+            }]
+        })
+
+        # Create the payment
+        if payment.create():
+            # Find the approved payment
+            approved_payment = None
+            for link in payment.links:
+                if link.method == "REDIRECT":
+                    # Save the redirect URL
+                    redirect_url =
+redirect_url = link.href
+                    approved_payment = payment
+                    break
+            # If the payment is approved
+            if approved_payment:
+                # Send the payment URL in a message
+                await message.channel.send(f"Please click this link to complete your tip: {redirect_url}")
+            else:
+                await message.channel.send("Error: Payment not approved.")
+        else:
+            await message.channel.send("Error: Payment not created.")
+
+client.run("TOKEN")
