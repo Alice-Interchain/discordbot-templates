@@ -1,0 +1,60 @@
+import discord
+import requests
+
+# Replace YOUR_BOT_TOKEN with the API token for your Discord bot
+client = discord.Client(token='YOUR_BOT_TOKEN')
+
+# Replace YOUR_ETSY_API_KEY with your Etsy API key
+ETSY_API_KEY = 'YOUR_ETSY_API_KEY'
+
+# Replace SHOP_ID with the ID of the Etsy shop you want to monitor
+SHOP_ID = 'SHOP_ID'
+
+# Replace WEBHOOK_URL with the URL of the Discord webhook you want to use
+WEBHOOK_URL = 'WEBHOOK_URL'
+
+@client.event
+async def on_ready():
+    # This event handler will be called when the bot is connected and ready
+    print('Logged in as')
+    print(client.user.name)
+    print(client.user.id)
+    print('------')
+
+@client.event
+async def on_message(message):
+    # This event handler will be called when the bot receives a message
+    # You can use this event handler to create commands for your bot
+    if message.content.startswith('!newlistings'):
+        # Get the latest listings from the Etsy shop
+        listings = get_latest_listings()
+        
+        # Send the listings to the Discord webhook
+        send_to_webhook(listings)
+
+def get_latest_listings():
+    # Make a request to the Etsy API to get the latest listings from the shop
+    url = f'https://openapi.etsy.com/v2/shops/{SHOP_ID}/listings/active'
+    headers = {'X-Etsy-Api-Key': ETSY_API_KEY}
+    r = requests.get(url, headers=headers)
+    data = r.json()
+    
+    # Extract the listings from the response
+    listings = data['results']
+    
+    return listings
+
+def send_to_webhook(listings):
+    # Construct the message to send to the Discord webhook
+    message = ''
+    for listing in listings:
+        title = listing['title']
+        url = listing['url']
+        message += f'{title}: {url}\n'
+    
+    # Send the message to the Discord webhook
+    payload = {'content': message}
+    requests.post(WEBHOOK_URL, json=payload)
+
+# Run the bot
+client.run()
